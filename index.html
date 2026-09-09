@@ -1,0 +1,459 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>CO Guard · Monitoreo y respuesta ante monóxido de carbono</title>
+  <meta name="description" content="Plataforma conectada de monitoreo de monóxido de carbono con ESP32, Supabase, alertas para Owner y Viewer, dashboard de bomberos y ventilación automática." />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,600;1,9..144,500;1,9..144,600&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <div class="page">
+
+    <!-- Top bar -->
+    <header class="topbar">
+      <div class="topbar-inner">
+        <div class="brand">
+          <span class="brand-badge">VCO</span>
+          <span class="brand-name">VENTO App</span>
+        </div>
+        <nav class="nav">
+          <a href="#que-es">Qué es</a>
+          <a href="#sistema">Sistema</a>
+          <a href="#dashboard">Respuesta</a>
+          <a href="#fuentes">Fuentes</a>
+          <a href="#niveles">Niveles</a>
+          <a href="#prevencion">Prevención</a>
+          <a href="#emergencia">Emergencia</a>
+        </nav>
+        <a href="#emergencia" class="btn btn-red">Emergencia</a>
+      </div>
+    </header>
+
+    <main class="main">
+
+      <!-- HERO -->
+      <section id="que-es" class="hero grid-12">
+        <div class="hero-card span-7">
+          <p class="eyebrow">(a) VENTO: prevención contra el monóxido de carbonos</p>
+          <h1 class="hero-title">El asesino <em class="em-red">silencioso</em></h1>
+          <p class="hero-lead">
+            Un gas sin color ni olor puede llenar una habitación sin que nadie lo
+            advierta. VENTO monitorea cada lectura, valida el riesgo y coordina
+            la respuesta antes de que la exposición se vuelva crítica.
+          </p>
+          <div class="hero-actions">
+            <a href="#sistema" class="btn btn-dark">Ver cómo protege</a>
+            <a href="#emergencia" class="btn btn-outline">Protocolo de emergencia</a>
+          </div>
+        </div>
+
+        <div class="hero-side span-5">
+          <div class="card card-red-tint">
+            <p class="eyebrow text-red">¿Como detectarlo?</p>
+            <p class="card-quote">Sin color. Sin olor. Sin aviso previo.</p>
+          </div>
+          <div class="card">
+            <p class="eyebrow">El gas, como lo ves</p>
+            <div class="gas-visual">
+              <div class="gas-blob gas-blob-a"></div>
+              <div class="gas-blob gas-blob-b"></div>
+              <span class="gas-caption">Sin forma · sin rastro visible</span>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- SISTEMA -->
+      <section id="sistema" class="section system-section">
+        <div class="section-head">
+          <div>
+            <p class="eyebrow text-red">Red de protección conectada</p>
+            <h2 class="section-title">Una lectura puede activar toda la respuesta</h2>
+          </div>
+          <p class="section-intro">Validación en la nube y acciones coordinadas en segundos.</p>
+        </div>
+        <div class="system-status">
+          <div class="status-live"><span class="status-dot"></span> Cadena de Flujo</div>
+          <div><span class="status-label">Sensores</span><strong> En vigilancia continua</strong></div>
+          <div><span class="status-label">Canal</span><strong> ESP32 · Supabase</strong></div>
+          <div><span class="status-label">Respuesta</span><strong> Automática</strong></div>
+        </div>
+        <div class="system-flow" aria-label="Flujo del sistema de detección y respuesta">
+          <article class="flow-node flow-sensor">
+            <span class="flow-index">01</span>
+            <span class="flow-kicker">Captura local</span>
+            <h3>ESP32 sensor</h3>
+            <p>Lee la concentración de CO y el estado ambiental de forma permanente.</p>
+          </article>
+          <span class="flow-arrow" aria-hidden="true">→</span>
+          <article class="flow-node flow-cloud">
+            <span class="flow-index">02</span>
+            <span class="flow-kicker">Decisión segura</span>
+            <h3>Supabase</h3>
+            <p>Valida el token, registra cada lectura y crea una alerta al superar los límites.</p>
+          </article>
+          <span class="flow-arrow" aria-hidden="true">→</span>
+          <article class="flow-node flow-alert">
+            <span class="flow-index">03</span>
+            <span class="flow-kicker">Aviso dirigido</span>
+            <h3>Apps conectadas</h3>
+            <p>La app Owner gestiona el evento y la app Viewer recibe la alarma para proteger al usuario y a sus personas cercanas.</p>
+          </article>
+          <span class="flow-arrow" aria-hidden="true">→</span>
+          <article class="flow-node flow-action">
+            <span class="flow-index">04</span>
+            <span class="flow-kicker">Respuesta física</span>
+            <h3>ESP32 actuador</h3>
+            <p>Activa luces y servos para abrir la ventilación automáticamente cuando es seguro hacerlo.</p>
+          </article>
+        </div>
+        <div class="system-note">
+          <strong>¿Por qué es clave?</strong>
+          <span>El sistema no depende de que alguien perciba el olor o esté mirando una pantalla. Detecta, verifica, comunica y actúa antes de que una exposición invisible se convierta en una emergencia.</span>
+        </div>
+      </section>
+
+      <!-- CENTRO DE RESPUESTA -->
+      <section id="dashboard" class="section response-section">
+        <div class="response-layout">
+          <div>
+            <p class="eyebrow text-amber">Centro de respuesta · Dashboard de bomberos</p>
+            <h2 class="section-title">La amenaza se entiende de un vistazo</h2>
+            <p class="response-copy">Cada alerta llega clasificada por peligrosidad para que bomberos puedan priorizar recursos, ubicar el evento y actuar con contexto. La información deja de estar dispersa entre sensores, llamadas y mensajes.</p>
+            <a href="#niveles" class="btn btn-amber">Explorar niveles de riesgo</a>
+          </div>
+          <div class="dashboard-preview">
+            <div class="dashboard-top"><span>INCIDENTES EN TIEMPO REAL</span><span class="dashboard-sync"><span class="status-dot"></span> sincronizado</span></div>
+            <div class="threat-row threat-critical"><span class="threat-marker"></span><div><strong>Zona 04 · exposición crítica</strong><small>CO &gt; 200 ppm · alerta confirmada</small></div><b>CRÍTICA</b></div>
+            <div class="threat-row threat-high"><span class="threat-marker"></span><div><strong>Zona 02 · ventilación activa</strong><small>CO 100–200 ppm · seguimiento</small></div><b>ALTA</b></div>
+            <div class="threat-row threat-watch"><span class="threat-marker"></span><div><strong>Zona 07 · lectura preventiva</strong><small>CO 35–100 ppm · monitorizar</small></div><b>VIGILANCIA</b></div>
+            <div class="dashboard-footer"><span>Última actualización: ahora</span><span>6 zonas conectadas</span></div>
+          </div>
+        </div>
+      </section>
+
+      <!-- QUÉ ES -->
+      <section class="section">
+        <div class="section-head">
+          <h2 class="section-title">Qué es el monóxido de carbono</h2>
+          <p class="eyebrow">(b) Fundamento</p>
+        </div>
+        <div class="grid-3">
+          <div class="card">
+            <p class="stat">CO</p>
+            <p class="card-text">
+              Fórmula química de una molécula con un átomo de carbono y uno de
+              oxígeno. Se forma en toda combustión incompleta de gas, carbón,
+              leña, gasolina o petróleo.
+            </p>
+          </div>
+          <div class="card">
+            <p class="stat text-red">200×</p>
+            <p class="card-text">
+              Se une a la hemoglobina de la sangre hasta 200 veces más fuerte que
+              el oxígeno, formando carboxihemoglobina (COHb) y bloqueando el
+              transporte de O₂ a los tejidos.
+            </p>
+          </div>
+          <div class="card">
+            <p class="stat text-amber">Invisible</p>
+            <p class="card-text">
+              Sin color, olor ni sabor. Los sentidos no pueden detectarlo: solo
+              un detector de CO avisa a tiempo de que está presente.
+            </p>
+          </div>
+        </div>
+        <div class="quote-band">
+          <p class="quote-text">
+            “El CO se pega a tu hemoglobina formando
+            <strong class="text-red">carboxihemoglobina</strong>, bloqueando el
+            transporte de oxígeno a cada órgano — sobre todo al corazón y al
+            cerebro.”
+          </p>
+          <p class="quote-note">Fisiopatología · hipoxia tisular</p>
+        </div>
+      </section>
+
+      <!-- FUENTES -->
+      <section id="fuentes" class="section">
+        <div class="section-head">
+          <h2 class="section-title">Fuentes comunes en el hogar</h2>
+          <p class="eyebrow">(c) Origen</p>
+        </div>
+        <div class="grid-4">
+          <div class="card">
+            <p class="eyebrow text-amber">Combustión</p>
+            <h3 class="card-title">Calderas y estufas</h3>
+            <p class="card-text">
+              Calderas, chimeneas y estufas de gas mal ajustadas o con conductos
+              obstruidos concentran CO en habitaciones cerradas.
+            </p>
+            <p class="risk text-red">Riesgo: Alto</p>
+          </div>
+          <div class="card">
+            <p class="eyebrow text-amber">Calor</p>
+            <h3 class="card-title">Hornos y cocinas</h3>
+            <p class="card-text">
+              Barbacoas, braseros y quemadores de gas usados en espacios cerrados
+              o poco ventilados.
+            </p>
+            <p class="risk text-amber">Riesgo: Medio</p>
+          </div>
+          <div class="card">
+            <p class="eyebrow text-amber">Garaje</p>
+            <h3 class="card-title">Motores y garajes</h3>
+            <p class="card-text">
+              Vehículos en marcha dentro de garajes cerrados o junto a puertas
+              que comunican con la vivienda.
+            </p>
+            <p class="risk text-red">Riesgo: Alto</p>
+          </div>
+          <div class="card">
+            <p class="eyebrow text-amber">Obra</p>
+            <h3 class="card-title">Generadores y herramientas</h3>
+            <p class="card-text">
+              Generadores portátiles, soldadoras y motores de combustión usados
+              en interiores sin extracción.
+            </p>
+            <p class="risk text-red">Riesgo: Alto</p>
+          </div>
+        </div>
+      </section>
+
+      <!-- NIVELES -->
+      <section id="niveles" class="section">
+        <div class="section-head">
+          <h2 class="section-title">Síntomas por concentración</h2>
+          <p class="eyebrow">(d) Exposición</p>
+        </div>
+
+        <div class="card meter-card">
+          <div class="meter-grid">
+            <div>
+              <p class="eyebrow">Medidor interactivo · ppm en aire</p>
+              <div class="meter-value">
+                <span id="ppm-value" class="meter-number">35</span>
+                <span class="meter-unit">ppm</span>
+              </div>
+              <input type="range" id="ppm-slider" min="0" max="1000" step="5" value="35"
+                     class="co-range" aria-label="Concentración de monóxido de carbono en ppm" />
+              <div class="meter-scale">
+                <span>0</span><span>200</span><span>400</span>
+                <span>600</span><span>800</span><span>1000</span>
+              </div>
+            </div>
+            <div>
+              <div class="meter-result-head">
+                <span id="band-badge" class="badge badge-teal">Nivel Leve</span>
+                <span id="band-time" class="eyebrow">Tiempo aprox. ~8 horas</span>
+              </div>
+              <p id="band-effect" class="meter-effect">
+                Dolor de cabeza leve tras exposición prolongada.
+              </p>
+            </div>
+          </div>
+        </div>
+
+        <div class="grid-2 mt">
+          <div class="card">
+            <div class="flex-between">
+              <p class="eyebrow">COHb en sangre</p>
+              <span class="mono-note">Referencia</span>
+            </div>
+            <div class="bars">
+              <div class="bar-row">
+                <div class="bar-labels"><span class="text-muted">0,5 %</span><span>Normal</span></div>
+                <div class="bar-track"><div class="bar-fill bg-teal" style="width:8%; animation-delay:.05s"></div></div>
+              </div>
+              <div class="bar-row">
+                <div class="bar-labels"><span class="text-muted">5–10 %</span><span>Dolor de cabeza leve</span></div>
+                <div class="bar-track"><div class="bar-fill bg-teal" style="width:22%; animation-delay:.12s"></div></div>
+              </div>
+              <div class="bar-row">
+                <div class="bar-labels"><span class="text-muted">10–20 %</span><span>Mareo · náuseas</span></div>
+                <div class="bar-track"><div class="bar-fill bg-amber" style="width:45%; animation-delay:.19s"></div></div>
+              </div>
+              <div class="bar-row">
+                <div class="bar-labels"><span class="text-muted">20–30 %</span><span>Vértigo · confusión</span></div>
+                <div class="bar-track"><div class="bar-fill bg-amber" style="width:68%; animation-delay:.26s"></div></div>
+              </div>
+              <div class="bar-row">
+                <div class="bar-labels"><span class="text-muted">&gt;30 %</span><span>Pérdida de conciencia</span></div>
+                <div class="bar-track"><div class="bar-fill bg-red" style="width:92%; animation-delay:.33s"></div></div>
+              </div>
+            </div>
+          </div>
+
+          <div class="card card-red-tint">
+            <p class="eyebrow">Concentración en aire · ppm</p>
+            <div class="ppm-grid">
+              <div class="ppm-cell"><div class="ppm-value">0</div><div class="ppm-sub text-muted">Normal</div></div>
+              <div class="ppm-cell"><div class="ppm-value">9</div><div class="ppm-sub text-muted">8 h</div></div>
+              <div class="ppm-cell"><div class="ppm-value">35</div><div class="ppm-sub text-muted">30 min</div></div>
+              <div class="ppm-cell"><div class="ppm-value text-amber">100</div><div class="ppm-sub text-muted">1 h</div></div>
+              <div class="ppm-cell"><div class="ppm-value text-amber">200</div><div class="ppm-sub text-muted">30 min</div></div>
+              <div class="ppm-cell ppm-cell-dark"><div class="ppm-value">400</div><div class="ppm-sub">3 min</div></div>
+            </div>
+            <p class="card-text mt">
+              A 400 ppm, la mayoría de personas experimenta síntomas graves en
+              tres minutos. Una persona inconsciente puede fallecer en minutos.
+              Ante la duda, abandona el espacio y llama a emergencias.
+            </p>
+          </div>
+        </div>
+      </section>
+
+      <!-- DAÑOS -->
+      <section id="danhos" class="section">
+        <div class="section-head">
+          <h2 class="section-title">Daños en el cuerpo</h2>
+          <p class="eyebrow">(e) Efectos</p>
+        </div>
+        <div class="grid-4">
+          <div class="card">
+            <span class="chip chip-amber">Leve</span>
+            <p class="card-title">Dolor de cabeza</p>
+            <p class="card-text">Mareo, náuseas y fatiga. Síntomas que se confunden con gripe o cansancio.</p>
+          </div>
+          <div class="card">
+            <span class="chip chip-amber">Moderado</span>
+            <p class="card-title">Confusión</p>
+            <p class="card-text">Visión borrosa, debilidad, taquicardia y pérdida de coordinación.</p>
+          </div>
+          <div class="card">
+            <span class="chip chip-red">Grave</span>
+            <p class="card-title">Pérdida de conciencia</p>
+            <p class="card-text">Convulsiones, arritmia y daño neurológico. Riesgo vital alto.</p>
+          </div>
+          <div class="card">
+            <span class="chip chip-dark">Crítico</span>
+            <p class="card-title">Coma / fallecimiento</p>
+            <p class="card-text">Sin tratamiento inmediato, daño cerebral irreversible y muerte.</p>
+          </div>
+        </div>
+        <div class="grid-2 mt">
+          <div class="card">
+            <p class="eyebrow">Grupos de riesgo</p>
+            <ul class="risk-list">
+              <li>· Bebés, niños pequeños y ancianos.</li>
+              <li>· Personas con enfermedad cardíaca o respiratoria.</li>
+              <li>· Mujeres embarazadas: el feto es más sensible al CO.</li>
+              <li>· Quienes viven o trabajan en espacios mal ventilados.</li>
+            </ul>
+          </div>
+          <div class="card">
+            <p class="eyebrow">Daño a largo plazo</p>
+            <p class="card-text">
+              Incluso tras recuperarse, algunas personas sufren secuelas
+              neurológicas persistentes: problemas de memoria, dificultad de
+              concentración, cambios de carácter y trastornos del movimiento.
+              El seguimiento médico es esencial.
+            </p>
+          </div>
+        </div>
+      </section>
+
+      <!-- PREVENCIÓN -->
+      <section id="prevencion" class="section">
+        <div class="section-head">
+          <h2 class="section-title">Prevención en casa</h2>
+          <p class="eyebrow">(f) Medidas</p>
+        </div>
+        <div class="grid-4">
+          <div class="card">
+            <span class="mono-note">01</span>
+            <h3 class="card-title">Ventila siempre</h3>
+            <p class="card-text">Mantén aberturas abiertas al usar quemadores, estufas o calentadores de gas.</p>
+          </div>
+          <div class="card">
+            <span class="mono-note">02</span>
+            <h3 class="card-title">Revisa instalaciones</h3>
+            <p class="card-text">Limpia y revisa chimeneas y calderas cada temporada con un profesional.</p>
+          </div>
+          <div class="card">
+            <span class="mono-note">03</span>
+            <h3 class="card-title">Nunca en interiores</h3>
+            <p class="card-text">No uses carbón, barbacoas ni motores de combustión dentro de casa.</p>
+          </div>
+          <div class="card">
+            <span class="mono-note">04</span>
+            <h3 class="card-title">Instala detectores</h3>
+            <p class="card-text">Coloca detectores de CO en cada planta y cerca de dormitorios; revisa las pilas.</p>
+          </div>
+        </div>
+      </section>
+
+      <!-- EMERGENCIA -->
+      <section id="emergencia" class="section">
+        <div class="section-head">
+          <h2 class="section-title">Qué hacer ante un síntoma</h2>
+          <p class="eyebrow">(g) Protocolo</p>
+        </div>
+        <div class="steps">
+          <div class="step"><span class="mono-note">01</span><h3 class="card-title">Abre ventanas</h3><p class="card-text">Ventila la estancia de inmediato.</p></div>
+          <div class="step"><span class="mono-note">02</span><h3 class="card-title">Sal al exterior</h3><p class="card-text">Acude a un lugar con aire limpio.</p></div>
+          <div class="step"><span class="mono-note">03</span><h3 class="card-title">Corta el origen</h3><p class="card-text">Apaga la combustión si es seguro.</p></div>
+          <div class="step"><span class="mono-note">04</span><h3 class="card-title">Llama a emergencias</h3><p class="card-text">No reintroduzcas aparatos eléctricos ni llamas.</p></div>
+          <div class="step step-highlight"><span class="mono-note text-amber">05</span><h3 class="card-title">Busca atención</h3><p class="card-text step-text-strong">Ve al hospital aunque te sientas bien.</p></div>
+        </div>
+        <div class="cta-band">
+          <div>
+            <p class="eyebrow cta-eyebrow">Instalación esencial</p>
+            <p class="cta-title">Un detector de CO en cada planta</p>
+          </div>
+          <a href="#que-es" class="btn btn-amber">Revisa tu vivienda</a>
+        </div>
+      </section>
+
+      <!-- FAQ -->
+      <section id="faq" class="section">
+        <div class="section-head">
+          <h2 class="section-title">Preguntas frecuentes</h2>
+          <p class="eyebrow">(h) Dudas</p>
+        </div>
+        <div class="grid-2">
+          <div class="card">
+            <h3 class="card-title">¿Por qué no puedo oler el monóxido de carbono?</h3>
+            <p class="card-text">Porque es una molécula sin odorantes añadidos. A diferencia del gas natural, que se aromatiza para alertar, el CO no tiene olor, color ni sabor: por eso se le llama el asesino silencioso.</p>
+          </div>
+          <div class="card">
+            <h3 class="card-title">¿Un detector de humo sirve para el CO?</h3>
+            <p class="card-text">No. Los detectores de humo solo detectan partículas de humo. Los detectores de CO miden la concentración de monóxido de carbono en aire y son distintos; necesitas ambos en casa.</p>
+          </div>
+          <div class="card">
+            <h3 class="card-title">¿Los síntomas desaparecen al salir al aire libre?</h3>
+            <p class="card-text">A veces sí, pero eso no significa que no haya daño. La carboxihemoglobina tarda horas en bajar. Conviene buscar atención médica para medir COHb y evaluar oxigenoterapia.</p>
+          </div>
+          <div class="card">
+            <h3 class="card-title">¿Puede acumularse el CO aunque no haya fuego?</h3>
+            <p class="card-text">Sí. Cualquier combustión incompleta —una caldera mal regulada, un motor en marcha, un brasero— puede generar CO sin llamas visibles. La ventilación es clave.</p>
+          </div>
+          <div class="card">
+            <h3 class="card-title">¿Es peligroso un nivel bajo pero constante?</h3>
+            <p class="card-text">Sí. La exposición crónica a niveles bajos produce síntomas persistentes (cefalea, fatiga) y, con el tiempo, daño neurológico. Es importante investigar la fuente.</p>
+          </div>
+          <div class="card">
+            <h3 class="card-title">¿Qué número llamar en una emergencia?</h3>
+            <p class="card-text">Depende de tu país: 112 en gran parte de Europa y América, 911 en EE. UU., 061 emergencias sanitarias en algunas regiones. Ten el número guardado y no dudes en llamar.</p>
+          </div>
+        </div>
+      </section>
+
+    </main>
+
+    <footer class="footer">
+      <div class="footer-inner">
+        <span class="footer-brand">Monóxido de Carbono · VENTO App</span>
+        <span class="footer-sources">Fuentes: OMS · CDC · NIOSH</span>
+        <span>Contenido educativo. Ante síntomas, llama a emergencias.</span>
+      </div>
+    </footer>
+
+  </div>
+  <script src="script.js"></script>
+</body>
+</html>
