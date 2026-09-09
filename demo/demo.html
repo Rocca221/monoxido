@@ -1,0 +1,1133 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Centro de Control CO · Monitoreo en Tiempo Real</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg: #F3F5F7;
+    --bg-2: #E9EDF2;
+    --panel: #FFFFFF;
+    --panel-2: #F8FAFC;
+    --border: #D5DCE3;
+    --border-soft: #E3E8ED;
+    --text: #263238;
+    --text-dim: #607080;
+    --text-mute: #8795A3;
+    --cyan: #25638A;
+    --critical: #D9363E;
+    --danger: #D9822B;
+    --caution: #D9A900;
+    --normal: #238B57;
+    --offline: #7B8794;
+    --radius-sm: 3px;
+    --radius-md: 6px;
+    --font-display: 'Space Grotesk', system-ui, sans-serif;
+    --font-mono: 'JetBrains Mono', ui-monospace, monospace;
+    --shadow-panel: 0 1px 0 rgba(255,255,255,0.9) inset, 0 4px 14px rgba(38,50,56,0.08);
+  }
+
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;}
+  body{
+    background:
+      radial-gradient(1100px 600px at 85% -10%, rgba(37,99,138,0.06), transparent 60%),
+      radial-gradient(900px 500px at 5% 0%, rgba(217,54,62,0.04), transparent 55%),
+      var(--bg);
+    color:var(--text);
+    font-family:var(--font-display);
+    min-height:100vh;
+    -webkit-font-smoothing:antialiased;
+  }
+  h1,h2,h3{font-family:var(--font-display); margin:0;}
+  button, input, select{font-family:inherit;}
+  ::selection{background:rgba(37,99,138,0.16); color:#fff;}
+
+  a{color:inherit;}
+
+  :focus-visible{
+    outline:2px solid var(--cyan);
+    outline-offset:2px;
+    border-radius:2px;
+  }
+
+  /* ---------- Alert banner ---------- */
+  .alert-banner{
+    position:fixed;
+    top:0; left:0; right:0;
+    z-index:80;
+    transform:translateY(-100%);
+    transition:transform .35s ease;
+    background:linear-gradient(90deg, #FBEAEC, #F8D9DD 45%, #FBEAEC);
+    border-bottom:1px solid rgba(217,54,62,0.35);
+    color:#8F2530;
+    padding:12px 20px;
+    display:flex;
+    align-items:center;
+    gap:10px;
+    font-size:0.92rem;
+    font-weight:600;
+    letter-spacing:.2px;
+  }
+  .alert-banner.show{ transform:translateY(0); }
+  .alert-banner .dot{
+    width:9px; height:9px; border-radius:50%;
+    background:var(--critical);
+    box-shadow:0 0 0 0 rgba(217,54,62,0.55);
+    animation:bannerPulse 1s infinite;
+    flex:0 0 auto;
+  }
+  @keyframes bannerPulse{
+    0%{box-shadow:0 0 0 0 rgba(217,54,62,0.45);}
+    70%{box-shadow:0 0 0 9px rgba(255,59,78,0);}
+    100%{box-shadow:0 0 0 0 rgba(255,59,78,0);}
+  }
+
+  /* ---------- Header ---------- */
+  .topbar{
+    padding:22px 28px 16px;
+    border-bottom:1px solid var(--border-soft);
+    background:linear-gradient(180deg, var(--bg-2), transparent);
+    position:sticky;
+    top:0;
+    z-index:40;
+    backdrop-filter:blur(10px);
+  }
+  .topbar-main{
+    display:flex;
+    align-items:flex-start;
+    justify-content:space-between;
+    gap:20px;
+    flex-wrap:wrap;
+  }
+  .brand{ display:flex; align-items:flex-start; gap:12px; }
+  .live-dot{
+    width:10px; height:10px; border-radius:50%;
+    background:var(--normal);
+    margin-top:8px;
+    flex:0 0 auto;
+    box-shadow:0 0 0 0 rgba(35,139,87,0.35);
+    animation:livePulse 2s infinite;
+  }
+  @keyframes livePulse{
+    0%{box-shadow:0 0 0 0 rgba(35,139,87,0.30);}
+    70%{box-shadow:0 0 0 8px rgba(52,209,124,0);}
+    100%{box-shadow:0 0 0 0 rgba(52,209,124,0);}
+  }
+  @media (prefers-reduced-motion: reduce){
+    .live-dot, .alert-banner .dot, .is-critical{ animation:none !important; }
+  }
+  .brand h1{
+    font-size:1.32rem;
+    font-weight:700;
+    letter-spacing:.2px;
+    line-height:1.25;
+  }
+  .brand-sub{
+    margin:4px 0 0;
+    color:var(--text-dim);
+    font-size:0.86rem;
+  }
+  .clock-block{ text-align:right; }
+  .clock-time{
+    font-family:var(--font-mono);
+    font-size:2rem;
+    font-weight:600;
+    letter-spacing:1px;
+    color:var(--cyan);
+    line-height:1;
+  }
+  .clock-date{
+    margin-top:6px;
+    font-size:0.8rem;
+    color:var(--text-mute);
+    text-transform:capitalize;
+  }
+
+  .stats-row{
+    display:flex;
+    flex-wrap:wrap;
+    gap:10px;
+    margin-top:18px;
+  }
+  .stat{
+    background:var(--panel-2);
+    border:1px solid var(--border-soft);
+    border-radius:var(--radius-md);
+    padding:9px 14px;
+    min-width:104px;
+    flex:1 1 104px;
+  }
+  .stat-value{
+    display:block;
+    font-family:var(--font-mono);
+    font-size:1.35rem;
+    font-weight:600;
+    line-height:1.1;
+  }
+  .stat-label{
+    display:block;
+    margin-top:3px;
+    font-size:0.72rem;
+    color:var(--text-mute);
+  }
+  .stat--total{ border-color:var(--border-soft); }
+  .stat--total .stat-value{ color:var(--text); }
+  .stat--active{ border-color:rgba(37,99,138,0.28); background:rgba(37,99,138,0.06); }
+  .stat--active .stat-value{ color:var(--cyan); }
+  .stat--critical .stat-value{ color:var(--critical); }
+  .stat--danger .stat-value{ color:var(--danger); }
+  .stat--caution .stat-value{ color:var(--caution); }
+  .stat--normal .stat-value{ color:var(--normal); }
+  .stat--offline .stat-value{ color:var(--offline); }
+
+  /* ---------- Toolbar ---------- */
+  .toolbar{
+    display:flex;
+    flex-wrap:wrap;
+    align-items:end;
+    gap:12px;
+    padding:16px 28px;
+    border-bottom:1px solid var(--border-soft);
+  }
+  .search-field{
+    flex:2 1 260px;
+    display:flex;
+    align-items:center;
+    gap:8px;
+    background:var(--panel-2);
+    border:1px solid var(--border);
+    border-radius:var(--radius-md);
+    padding:9px 12px;
+  }
+  .search-field svg{ flex:0 0 auto; color:var(--text-mute); }
+  .search-field input{
+    border:0; background:transparent; outline:none;
+    color:var(--text); font-size:0.9rem; width:100%;
+  }
+  .search-field input::placeholder{ color:var(--text-mute); }
+
+  .select-field{
+    flex:0 1 190px;
+    display:flex; flex-direction:column; gap:5px;
+  }
+  .select-field span{
+    font-size:0.7rem;
+    color:var(--text-mute);
+    text-transform:uppercase;
+    letter-spacing:.6px;
+  }
+  .select-field select{
+    background:var(--panel-2);
+    border:1px solid var(--border);
+    color:var(--text);
+    padding:8px 10px;
+    border-radius:var(--radius-md);
+    font-size:0.86rem;
+  }
+
+  .btn{
+    display:inline-flex; align-items:center; gap:8px;
+    border-radius:var(--radius-md);
+    padding:9px 16px;
+    font-size:0.86rem;
+    font-weight:600;
+    cursor:pointer;
+    border:1px solid transparent;
+    transition:filter .12s ease, transform .05s ease;
+    white-space:nowrap;
+  }
+  .btn:active{ transform:translateY(1px); }
+  .btn:hover{ filter:brightness(1.12); }
+
+  .btn-simulate{
+    margin-left:auto;
+    background:transparent;
+    border:1px dashed rgba(217,54,62,0.45);
+    color:#B02A35;
+  }
+  .btn-simulate svg{ flex:0 0 auto; }
+
+  /* ---------- Legend ---------- */
+  .legend{
+    display:flex; flex-wrap:wrap; gap:8px;
+    padding:0 28px 16px;
+  }
+  .legend-pill{
+    display:flex; flex-direction:column;
+    border:1px solid var(--border-soft);
+    border-left:3px solid var(--pill-c, var(--text-mute));
+    border-radius:var(--radius-sm);
+    padding:6px 10px;
+    min-width:112px;
+  }
+  .legend-pill strong{ font-size:0.76rem; color:var(--text); }
+  .legend-pill span{ font-family:var(--font-mono); font-size:0.7rem; color:var(--text-mute); margin-top:1px; }
+
+  /* ---------- Content / table head ---------- */
+  .content{ padding:4px 28px 60px; }
+
+  .table-head{
+    display:flex;
+    gap:14px;
+    padding:8px 18px;
+    font-size:0.7rem;
+    letter-spacing:.6px;
+    text-transform:uppercase;
+    color:var(--text-mute);
+  }
+  .table-head span{ display:block; }
+  .col-status{ flex:1 1 176px; }
+  .col-location{ flex:2 1 240px; }
+  .col-ppm{ flex:0 0 116px; text-align:center; }
+  .col-contact{ flex:1 1 200px; }
+  .col-meta{ flex:1 1 210px; }
+
+  .sensor-grid{
+    display:flex; flex-direction:column; gap:10px;
+  }
+
+  .sensor-card{
+    --status-c: var(--offline);
+    display:flex; flex-wrap:wrap;
+    align-items:stretch;
+    background:var(--panel);
+    border:1px solid var(--border-soft);
+    border-left:4px solid var(--status-c);
+    border-radius:var(--radius-md);
+    box-shadow:var(--shadow-panel);
+    overflow:hidden;
+  }
+  .sensor-card.is-critical{
+    animation:cardGlow 2.2s ease-in-out infinite;
+  }
+  @keyframes cardGlow{
+    0%,100%{ box-shadow:var(--shadow-panel), 0 0 0 0 rgba(255,59,78,0); }
+    50%{ box-shadow:var(--shadow-panel), 0 0 22px 1px rgba(217,54,62,0.16); }
+  }
+  .sensor-card.just-added{ animation:cardIntro .5s ease; }
+  @keyframes cardIntro{
+    from{ opacity:0; transform:translateY(-6px); }
+    to{ opacity:1; transform:translateY(0); }
+  }
+
+  .card-cell{
+    padding:14px 16px;
+    border-right:1px solid var(--border-soft);
+    display:flex;
+    flex-direction:column;
+    justify-content:center;
+    gap:4px;
+  }
+  .card-cell:last-child{ border-right:none; }
+
+  .field-label{
+    display:none;
+    font-size:0.65rem;
+    letter-spacing:.5px;
+    text-transform:uppercase;
+    color:var(--text-mute);
+  }
+
+  .col-status{ flex:1 1 176px; gap:8px; }
+  .status-pill{
+    align-self:flex-start;
+    display:inline-flex; align-items:center; gap:6px;
+    border:1px solid var(--status-c);
+    color:var(--status-c);
+    border-radius:20px;
+    padding:3px 10px 3px 8px;
+    font-size:0.72rem;
+    font-weight:700;
+    letter-spacing:.5px;
+    text-transform:uppercase;
+  }
+  .status-pill .sw{ width:7px; height:7px; border-radius:50%; background:var(--status-c); }
+  .sensor-id{
+    font-family:var(--font-mono);
+    font-size:0.78rem;
+    color:var(--text-dim);
+  }
+
+  .col-location{ flex:2 1 240px; }
+  .address{ font-size:0.92rem; font-weight:500; color:var(--text); line-height:1.35; }
+  .zone{ font-size:0.78rem; color:var(--text-mute); }
+
+  .col-ppm{ flex:0 0 116px; align-items:center; text-align:center; }
+  .ppm-value{
+    font-family:var(--font-mono);
+    font-size:1.55rem;
+    font-weight:700;
+    color:var(--status-c);
+    line-height:1;
+  }
+  .ppm-value.flash{ animation:flashUpdate .9s ease; }
+  @keyframes flashUpdate{
+    0%{ text-shadow:0 0 14px var(--status-c); }
+    100%{ text-shadow:0 0 0 transparent; }
+  }
+  .ppm-unit{ font-size:0.68rem; color:var(--text-mute); letter-spacing:.5px; }
+  .ppm-offline-tag{ font-family:var(--font-mono); font-size:0.78rem; color:var(--offline); }
+
+  .col-contact{ flex:1 1 200px; }
+  .contact-name{ font-size:0.86rem; color:var(--text); }
+  .contact-row{ display:flex; align-items:center; gap:8px; margin-top:2px; }
+  .contact-phone{ font-family:var(--font-mono); font-size:0.82rem; color:var(--text-dim); }
+  .icon-btn{
+    display:inline-flex; align-items:center; justify-content:center;
+    width:26px; height:26px;
+    border-radius:6px;
+    border:1px solid var(--border);
+    background:var(--panel-2);
+    color:var(--text-dim);
+    cursor:pointer;
+    flex:0 0 auto;
+  }
+  .icon-btn:hover{ color:var(--cyan); border-color:rgba(37,99,138,0.35); }
+  .icon-btn.call-btn:hover{ color:var(--normal); border-color:rgba(35,139,87,0.3); }
+
+  .col-meta{ flex:1 1 210px; gap:8px; }
+  .updated-text{ font-family:var(--font-mono); font-size:0.76rem; color:var(--text-mute); }
+  .meta-actions{ display:flex; flex-wrap:wrap; gap:8px; }
+
+  .btn-action{
+    padding:7px 12px;
+    font-size:0.78rem;
+    border-radius:5px;
+    font-weight:700;
+  }
+  .btn-solid-critical{ background:var(--critical); color:#FFFFFF; border-color:var(--critical); }
+  .btn-solid-danger{ background:var(--danger); color:#FFFFFF; border-color:var(--danger); }
+  .btn-outline-caution{ background:transparent; color:var(--caution); border:1px solid var(--caution); }
+  .btn-outline-offline{ background:transparent; color:var(--offline); border:1px solid var(--offline); }
+  .btn-ghost{ background:transparent; color:var(--text-dim); border:1px solid var(--border); }
+  .btn-ghost:hover{ color:var(--text); border-color:var(--cyan); }
+  .action-done{
+    font-size:0.76rem;
+    color:var(--text-dim);
+    display:inline-flex;
+    align-items:center;
+    gap:6px;
+  }
+  .action-done svg{ color:var(--normal); }
+
+  .empty-state{
+    text-align:center;
+    color:var(--text-mute);
+    padding:60px 20px;
+    font-size:0.9rem;
+    border:1px dashed var(--border);
+    border-radius:var(--radius-md);
+  }
+  .hidden{ display:none !important; }
+
+  /* ---------- Modal ---------- */
+  .modal-overlay{
+    position:fixed; inset:0;
+    background:rgba(38,50,56,0.38);
+    backdrop-filter:blur(3px);
+    display:flex; align-items:center; justify-content:center;
+    z-index:90;
+    padding:20px;
+  }
+  .modal{
+    width:100%; max-width:560px;
+    max-height:85vh;
+    overflow-y:auto;
+    background:var(--panel);
+    border:1px solid var(--border);
+    border-radius:10px;
+    padding:26px;
+    position:relative;
+    box-shadow:0 20px 60px rgba(38,50,56,0.18);
+  }
+  .modal-close{
+    position:absolute; top:14px; right:14px;
+    width:30px; height:30px;
+    border-radius:6px;
+    background:var(--panel-2);
+    border:1px solid var(--border);
+    color:var(--text-dim);
+    font-size:1.1rem;
+    cursor:pointer;
+    line-height:1;
+  }
+  .modal-close:hover{ color:var(--text); }
+  .modal-status-row{ display:flex; align-items:center; gap:10px; margin-bottom:6px; }
+  .modal h2{ font-size:1.15rem; margin-bottom:2px; }
+  .modal .m-sub{ color:var(--text-mute); font-size:0.82rem; margin-bottom:18px; }
+  .m-grid{ display:grid; grid-template-columns:1fr 1fr; gap:14px 20px; margin-bottom:18px; }
+  .m-field{ display:flex; flex-direction:column; gap:3px; }
+  .m-field label{ font-size:0.66rem; text-transform:uppercase; letter-spacing:.5px; color:var(--text-mute); }
+  .m-field div{ font-size:0.88rem; }
+  .m-field.mono div{ font-family:var(--font-mono); }
+  .m-ppm-big{ font-family:var(--font-mono); font-size:2.2rem; font-weight:700; line-height:1; }
+  .trend-block{ margin:20px 0; }
+  .trend-block h3{ font-size:0.78rem; text-transform:uppercase; letter-spacing:.5px; color:var(--text-mute); margin-bottom:10px; }
+  .trend-svg-wrap{ background:var(--panel-2); border:1px solid var(--border-soft); border-radius:6px; padding:10px; }
+  .modal-actions{ display:flex; gap:10px; flex-wrap:wrap; margin-top:8px; }
+  .modal-actions .btn{ flex:1 1 auto; justify-content:center; }
+
+  /* ---------- Toast ---------- */
+  .toast-container{
+    position:fixed; bottom:20px; right:20px;
+    display:flex; flex-direction:column; gap:10px;
+    z-index:100;
+  }
+  .toast{
+    background:var(--panel);
+    border:1px solid var(--border);
+    border-left:3px solid var(--cyan);
+    color:var(--text);
+    padding:11px 16px;
+    border-radius:6px;
+    font-size:0.84rem;
+    box-shadow:0 10px 30px rgba(38,50,56,0.14);
+    animation:toastIn .25s ease;
+    max-width:320px;
+  }
+  .toast.fade{ animation:toastOut .3s ease forwards; }
+  @keyframes toastIn{ from{opacity:0; transform:translateY(8px);} to{opacity:1; transform:translateY(0);} }
+  @keyframes toastOut{ to{opacity:0; transform:translateY(8px);} }
+
+  .footer-note{
+    text-align:center;
+    color:var(--text-mute);
+    font-size:0.74rem;
+    padding:10px 20px 30px;
+  }
+
+  /* ---------- Responsive ---------- */
+  @media (max-width: 780px){
+    .table-head{ display:none; }
+    .field-label{ display:block; }
+    .card-cell{ border-right:none; border-bottom:1px solid var(--border-soft); width:100%; flex:1 1 100% !important; }
+    .card-cell:last-child{ border-bottom:none; }
+    .col-ppm{ flex-direction:row !important; justify-content:space-between; text-align:left; }
+    .clock-block{ text-align:left; }
+    .topbar-main{ flex-direction:column; }
+    .btn-simulate{ margin-left:0; width:100%; justify-content:center; }
+    .m-grid{ grid-template-columns:1fr; }
+  }
+</style>
+</head>
+<body>
+
+  <div id="alertBanner" class="alert-banner" role="alert" aria-live="assertive"></div>
+
+  <header class="topbar">
+    <div class="topbar-main">
+      <div class="brand">
+        <span class="live-dot" aria-hidden="true"></span>
+        <div>
+          <h1>Centro de Control y Monitoreo de CO</h1>
+          <p class="brand-sub">Alertas en Tiempo Real &middot; Sistema Operativo - En vivo</p>
+        </div>
+      </div>
+      <div class="clock-block">
+        <div id="clockTime" class="clock-time">00:00:00</div>
+        <div id="clockDate" class="clock-date">-</div>
+      </div>
+    </div>
+
+    <div class="stats-row" id="statsRow"></div>
+  </header>
+
+  <section class="toolbar" aria-label="Filtros y búsqueda de sensores">
+    <div class="search-field">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+      <input type="text" id="searchInput" placeholder="Buscar por dirección, zona o ID de sensor" aria-label="Buscar por dirección, zona o ID de sensor" />
+    </div>
+
+    <label class="select-field">
+      <span>Nivel / Estado</span>
+      <select id="statusFilter" aria-label="Filtrar por nivel de peligrosidad">
+        <option value="all">Todos</option>
+        <option value="critical">Crítico</option>
+        <option value="danger">Peligro</option>
+        <option value="caution">Precaución</option>
+        <option value="normal">Normal</option>
+        <option value="offline">Inactivo</option>
+      </select>
+    </label>
+
+    <label class="select-field">
+      <span>Ordenar por</span>
+      <select id="sortSelect" aria-label="Ordenar sensores">
+        <option value="ppm-desc">Mayor nivel de CO (ppm)</option>
+        <option value="recent">Más recientes</option>
+      </select>
+    </label>
+
+    <button id="simulateBtn" class="btn btn-simulate" type="button" title="Genera una alerta crítica de prueba para demostración">
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0Z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+      Simular alerta crítica (demo)
+    </button>
+  </section>
+
+  <div class="legend">
+    <div class="legend-pill" style="--pill-c:var(--critical)"><strong>Crítico</strong><span>&gt;100 ppm</span></div>
+    <div class="legend-pill" style="--pill-c:var(--danger)"><strong>Peligro</strong><span>50–100 ppm</span></div>
+    <div class="legend-pill" style="--pill-c:var(--caution)"><strong>Precaución</strong><span>25–50 ppm</span></div>
+    <div class="legend-pill" style="--pill-c:var(--normal)"><strong>Normal</strong><span>&lt;25 ppm</span></div>
+    <div class="legend-pill" style="--pill-c:var(--offline)"><strong>Inactivo</strong><span>sin señal</span></div>
+  </div>
+
+  <main class="content">
+    <div class="table-head" aria-hidden="true">
+      <span class="col-status">Estado</span>
+      <span class="col-location">Sensor y ubicación</span>
+      <span class="col-ppm">Nivel CO</span>
+      <span class="col-contact">Contacto</span>
+      <span class="col-meta">Actualización / Acciones</span>
+    </div>
+
+    <div id="sensorGrid" class="sensor-grid" role="list"></div>
+    <p id="emptyState" class="empty-state hidden">No se encontraron sensores que coincidan con los filtros actuales.</p>
+  </main>
+
+  <div id="modalOverlay" class="modal-overlay hidden">
+    <div class="modal" role="dialog" aria-modal="true" aria-labelledby="modalTitle">
+      <button class="modal-close" id="modalClose" aria-label="Cerrar detalle">&times;</button>
+      <div id="modalBody"></div>
+    </div>
+  </div>
+
+  <div id="toastContainer" class="toast-container" aria-live="polite"></div>
+
+  <footer class="footer-note">
+    Panel de demostración. Los datos mostrados son simulados y no corresponden a sensores reales en operación.
+  </footer>
+
+<script>
+(function(){
+  "use strict";
+
+  /* ================= Status metadata ================= */
+  var STATUS_META = {
+    critical:{ label:'Crítico', color:'#FF3B4E', order:4 },
+    danger:{ label:'Peligro', color:'#FF9518', order:3 },
+    caution:{ label:'Precaución', color:'#FFD400', order:2 },
+    normal:{ label:'Normal', color:'#34D17C', order:1 },
+    offline:{ label:'Inactivo', color:'#6B7A93', order:0 }
+  };
+
+  function getStatus(s){
+    if(s.offline) return 'offline';
+    if(s.ppm > 100) return 'critical';
+    if(s.ppm >= 50) return 'danger';
+    if(s.ppm >= 25) return 'caution';
+    return 'normal';
+  }
+
+  /* ================= Seed data ================= */
+  var now = Date.now();
+  function minutesAgo(m){ return now - m*60000; }
+
+  var EXTRA_ADDRESS_POOL = [
+    {address:'Independencia 88, Barrio Catedral', zone:'Barrio Catedral'},
+    {address:'Av. Roca 210, Barrio Centro', zone:'Barrio Centro'},
+    {address:'Los Radales 340, Barrio Los Nogales', zone:'Barrio Los Nogales'},
+    {address:'Costanera Sur 60, Muelle Pier', zone:'Costanera'},
+    {address:'Obeid 512, Barrio Chapelco Norte', zone:'Chapelco Norte'}
+  ];
+  var EXTRA_CONTACT_POOL = [
+    {name:'Nicolás Vega', phone:'+54 9 2972 544102'},
+    {name:'Carla Espinoza', phone:'+54 2972 418877'},
+    {name:'Julián Torres', phone:'+54 9 2972 560099'},
+    {name:'Paula Miranda', phone:'+54 2972 462231'}
+  ];
+
+  var sensors = [
+    {
+      id:'CO-SENSOR-014', address:'Av. San Martín 450, Piso 2, Dpto B', zone:'Barrio Centro',
+      lat:-40.1567, lng:-71.3521, installed:'14/03/2024',
+      contactName:'Mirta Solís', phone:'+54 2972 421234',
+      ppm:186, offline:false, lastUpdate:minutesAgo(2), dispatched:false, actionLabelDone:null,
+      trend:[121,138,152,168,179,186]
+    },
+    {
+      id:'CO-SENSOR-042', address:'Elordi 95', zone:'Barrio Vega Norte',
+      lat:-40.1498, lng:-71.3602, installed:'02/11/2023',
+      contactName:'Héctor Bravo', phone:'+54 9 2972 511223',
+      ppm:152, offline:false, lastUpdate:minutesAgo(4), dispatched:false, actionLabelDone:null,
+      trend:[92,101,118,133,145,152]
+    },
+    {
+      id:'CO-SENSOR-027', address:'Av. Costanera 1290', zone:'Barrio Playa Bonita',
+      lat:-40.1622, lng:-71.3489, installed:'22/06/2024',
+      contactName:'Diego Fernández', phone:'+54 9 2972 505678',
+      ppm:88, offline:false, lastUpdate:minutesAgo(6), dispatched:false, actionLabelDone:null,
+      trend:[58,64,71,79,84,88]
+    },
+    {
+      id:'CO-SENSOR-058', address:'Juez del Valle 233', zone:'Barrio Chapelco',
+      lat:-40.1541, lng:-71.3467, installed:'09/01/2024',
+      contactName:'Laura Contreras', phone:'+54 2972 433890',
+      ppm:63, offline:false, lastUpdate:minutesAgo(9), dispatched:false, actionLabelDone:null,
+      trend:[41,47,52,57,60,63]
+    },
+    {
+      id:'CO-SENSOR-033', address:'Perito Moreno 780', zone:'Barrio Centro',
+      lat:-40.1589, lng:-71.3512, installed:'30/08/2023',
+      contactName:'Ramiro Paz', phone:'+54 2972 447712',
+      ppm:41, offline:false, lastUpdate:minutesAgo(12), dispatched:false, actionLabelDone:null,
+      trend:[22,27,31,35,38,41]
+    },
+    {
+      id:'CO-SENSOR-089', address:'Cerro Chapelco, Base Village, Local 12', zone:'Chapelco Base',
+      lat:-40.1436, lng:-71.3958, installed:'18/07/2024',
+      contactName:'Sofía Ibáñez', phone:'+54 9 2972 522984',
+      ppm:29, offline:false, lastUpdate:minutesAgo(15), dispatched:false, actionLabelDone:null,
+      trend:[14,18,21,24,27,29]
+    },
+    {
+      id:'CO-SENSOR-061', address:'Av. Koessler 1560', zone:'Barrio Los Nogales',
+      lat:-40.1655, lng:-71.3599, installed:'05/05/2023',
+      contactName:'Beatriz Núñez', phone:'+54 2972 409156',
+      ppm:14, offline:false, lastUpdate:minutesAgo(3), dispatched:false, actionLabelDone:null,
+      trend:[9,11,10,13,12,14]
+    },
+    {
+      id:'CO-SENSOR-075', address:'Ruta 40 Km 5, Cabañas Lago Lácar', zone:'Zona Rural / Ruta 40',
+      lat:-40.1802, lng:-71.4103, installed:'11/12/2023',
+      contactName:'Tomás Reyes', phone:'+54 9 2972 538871',
+      ppm:7, offline:false, lastUpdate:minutesAgo(8), dispatched:false, actionLabelDone:null,
+      trend:[4,6,5,7,6,7]
+    },
+    {
+      id:'CO-SENSOR-104', address:'Belgrano 340, Depósito Municipal', zone:'Barrio Centro',
+      lat:-40.1578, lng:-71.3529, installed:'20/02/2022',
+      contactName:'Guardia Municipal', phone:'+54 2972 460000',
+      ppm:18, offline:true, lastUpdate:minutesAgo(198), dispatched:false, actionLabelDone:null,
+      trend:[16,17,18,18,18,18]
+    }
+  ];
+
+  var sensorCounter = 200;
+
+  /* ================= Helpers ================= */
+  function normalize(str){
+    return (str||'').toString().toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'');
+  }
+
+  function escapeHtml(str){
+    return (str||'').toString()
+      .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
+      .replace(/"/g,'&quot;').replace(/'/g,'&#39;');
+  }
+
+  function formatRelative(ts){
+    var diffSec = Math.max(0, Math.floor((Date.now() - ts)/1000));
+    if(diffSec < 60) return 'Hace ' + diffSec + ' s';
+    var diffMin = Math.floor(diffSec/60);
+    if(diffMin < 60) return 'Hace ' + diffMin + ' min';
+    var diffH = Math.floor(diffMin/60);
+    var remMin = diffMin % 60;
+    if(diffH < 24) return 'Hace ' + diffH + ' h' + (remMin ? ' ' + remMin + ' min' : '');
+    var diffD = Math.floor(diffH/24);
+    return 'Hace ' + diffD + ' d';
+  }
+
+  function clamp(v,min,max){ return Math.max(min, Math.min(max, v)); }
+
+  function primaryAction(status){
+    switch(status){
+      case 'critical': return {label:'Despachar unidad', cls:'btn-solid-critical', doneLabel:'Unidad despachada', toast:'Unidad despachada a'};
+      case 'danger': return {label:'Despachar unidad', cls:'btn-solid-danger', doneLabel:'Unidad despachada', toast:'Unidad despachada a'};
+      case 'caution': return {label:'Programar inspección', cls:'btn-outline-caution', doneLabel:'Inspección programada', toast:'Inspección programada en'};
+      case 'offline': return {label:'Reportar falla', cls:'btn-outline-offline', doneLabel:'Falla reportada', toast:'Falla de sensor reportada en'};
+      default: return null;
+    }
+  }
+
+  /* ================= State ================= */
+  var state = { search:'', filter:'all', sort:'ppm-desc' };
+  var lastPpmMap = {};
+  var justAddedId = null;
+  var bannerTimeout = null;
+
+  /* ================= Rendering ================= */
+  function computeStats(){
+    var out = {total:0, critical:0, danger:0, caution:0, normal:0, offline:0};
+    sensors.forEach(function(s){
+      out.total++;
+      out[getStatus(s)]++;
+    });
+    out.active = out.critical + out.danger + out.caution;
+    return out;
+  }
+
+  function renderStats(){
+    var st = computeStats();
+    var el = document.getElementById('statsRow');
+    el.innerHTML =
+      statChip('total','Sensores totales', st.total) +
+      statChip('active','Alertas activas', st.active) +
+      statChip('critical','Críticos', st.critical) +
+      statChip('danger','Peligro', st.danger) +
+      statChip('caution','Precaución', st.caution) +
+      statChip('normal','Normales', st.normal) +
+      statChip('offline','Inactivos', st.offline);
+  }
+  function statChip(key,label,value){
+    return '<div class="stat stat--'+key+'"><span class="stat-value">'+value+'</span><span class="stat-label">'+label+'</span></div>';
+  }
+
+  function getFiltered(){
+    var q = normalize(state.search.trim());
+    var list = sensors.filter(function(s){
+      if(state.filter !== 'all' && getStatus(s) !== state.filter) return false;
+      if(!q) return true;
+      var hay = normalize(s.address + ' ' + s.zone + ' ' + s.id);
+      return hay.indexOf(q) !== -1;
+    });
+    list.sort(function(a,b){
+      if(state.sort === 'recent'){
+        return b.lastUpdate - a.lastUpdate;
+      }
+      var av = a.offline ? -1 : a.ppm;
+      var bv = b.offline ? -1 : b.ppm;
+      return bv - av;
+    });
+    return list;
+  }
+
+  function cardTemplate(s){
+    var status = getStatus(s);
+    var meta = STATUS_META[status];
+    var flash = lastPpmMap[s.id] !== undefined && lastPpmMap[s.id] !== s.ppm;
+    var criticalClass = status === 'critical' ? ' is-critical' : '';
+    var addedClass = s.id === justAddedId ? ' just-added' : '';
+
+    var ppmBlock;
+    if(s.offline){
+      ppmBlock = '<div class="ppm-offline-tag">SIN SEÑAL</div><div class="field-label">Última lectura: '+s.ppm+' ppm</div>';
+    } else {
+      ppmBlock = '<div class="ppm-value'+(flash?' flash':'')+'">'+s.ppm+'</div><div class="ppm-unit">PPM</div>';
+    }
+
+    var action = primaryAction(status);
+    var actionsHtml = '';
+    if(s.actionLabelDone){
+      actionsHtml += '<span class="action-done"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>'+escapeHtml(s.actionLabelDone)+'</span>';
+    } else if(action){
+      actionsHtml += '<button class="btn btn-action '+action.cls+'" data-action="dispatch" data-id="'+s.id+'" type="button">'+action.label+'</button>';
+    }
+    actionsHtml += '<button class="btn btn-action btn-ghost" data-action="details" data-id="'+s.id+'" type="button">Ver detalles</button>';
+
+    return (
+    '<div class="sensor-card'+criticalClass+addedClass+'" style="--status-c:'+meta.color+'" role="listitem">'+
+
+      '<div class="card-cell col-status">'+
+        '<span class="status-pill"><span class="sw"></span>'+meta.label+'</span>'+
+        '<span class="sensor-id">'+s.id+'</span>'+
+      '</div>'+
+
+      '<div class="card-cell col-location">'+
+        '<div class="field-label">Ubicación</div>'+
+        '<div class="address">'+escapeHtml(s.address)+'</div>'+
+        '<div class="zone">'+escapeHtml(s.zone)+'</div>'+
+      '</div>'+
+
+      '<div class="card-cell col-ppm">'+
+        '<div class="field-label">Nivel CO</div>'+
+        ppmBlock+
+      '</div>'+
+
+      '<div class="card-cell col-contact">'+
+        '<div class="field-label">Contacto</div>'+
+        '<div class="contact-name">'+escapeHtml(s.contactName)+'</div>'+
+        '<div class="contact-row">'+
+          '<span class="contact-phone">'+escapeHtml(s.phone)+'</span>'+
+          '<a class="icon-btn call-btn" href="tel:'+escapeHtml(s.phone.replace(/\s+/g,''))+'" title="Llamar" aria-label="Llamar a '+escapeHtml(s.contactName)+'">'+
+            '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 22 16.92z"/></svg>'+
+          '</a>'+
+          '<button class="icon-btn" data-action="copy" data-phone="'+escapeHtml(s.phone)+'" title="Copiar número" aria-label="Copiar número de '+escapeHtml(s.contactName)+'" type="button">'+
+            '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>'+
+          '</button>'+
+        '</div>'+
+      '</div>'+
+
+      '<div class="card-cell col-meta">'+
+        '<div class="field-label">Última actualización</div>'+
+        '<div class="updated-text">'+formatRelative(s.lastUpdate)+'</div>'+
+        '<div class="meta-actions">'+actionsHtml+'</div>'+
+      '</div>'+
+
+    '</div>'
+    );
+  }
+
+  function render(){
+    var grid = document.getElementById('sensorGrid');
+    var empty = document.getElementById('emptyState');
+    var list = getFiltered();
+
+    if(list.length === 0){
+      grid.innerHTML = '';
+      empty.classList.remove('hidden');
+    } else {
+      empty.classList.add('hidden');
+      grid.innerHTML = list.map(cardTemplate).join('');
+    }
+
+    // refresh lastPpmMap snapshot after paint
+    sensors.forEach(function(s){ lastPpmMap[s.id] = s.ppm; });
+    justAddedId = null;
+
+    renderStats();
+  }
+
+  /* ================= Clock ================= */
+  function tickClock(){
+    var d = new Date();
+    document.getElementById('clockTime').textContent =
+      d.toLocaleTimeString('es-AR', {hour:'2-digit', minute:'2-digit', second:'2-digit', hour12:false});
+    var dateStr = d.toLocaleDateString('es-AR', {weekday:'long', day:'2-digit', month:'long', year:'numeric'});
+    document.getElementById('clockDate').textContent = dateStr;
+  }
+
+  /* ================= Live simulation ================= */
+  function simulateFluctuation(){
+    sensors.forEach(function(s){
+      if(s.offline) return;
+      var delta = Math.round((Math.random()*8) - 3.5);
+      s.ppm = clamp(s.ppm + delta, 0, 320);
+      s.lastUpdate = Date.now();
+      s.trend.push(s.ppm);
+      if(s.trend.length > 8) s.trend.shift();
+    });
+    render();
+  }
+
+  /* ================= Toast ================= */
+  function toast(msg){
+    var container = document.getElementById('toastContainer');
+    var el = document.createElement('div');
+    el.className = 'toast';
+    el.textContent = msg;
+    container.appendChild(el);
+    setTimeout(function(){
+      el.classList.add('fade');
+      setTimeout(function(){ el.remove(); }, 320);
+    }, 3400);
+  }
+
+  /* ================= Sound (Web Audio) ================= */
+  var audioCtx = null;
+  function beep(){
+    try{
+      audioCtx = audioCtx || new (window.AudioContext || window.webkitAudioContext)();
+      var t = audioCtx.currentTime;
+      [880, 660].forEach(function(freq, i){
+        var osc = audioCtx.createOscillator();
+        var gain = audioCtx.createGain();
+        osc.type = 'square';
+        osc.frequency.value = freq;
+        gain.gain.setValueAtTime(0.0001, t + i*0.16);
+        gain.gain.exponentialRampToValueAtTime(0.12, t + i*0.16 + 0.02);
+        gain.gain.exponentialRampToValueAtTime(0.0001, t + i*0.16 + 0.14);
+        osc.connect(gain).connect(audioCtx.destination);
+        osc.start(t + i*0.16);
+        osc.stop(t + i*0.16 + 0.15);
+      });
+    }catch(e){ /* audio not available, ignore */ }
+  }
+
+  /* ================= Alert banner ================= */
+  function showBanner(sensorObj){
+    var banner = document.getElementById('alertBanner');
+    banner.innerHTML = '<span class="dot"></span> Nueva alerta crítica detectada — '+sensorObj.id+' · '+escapeHtml(sensorObj.address)+' · '+sensorObj.ppm+' PPM';
+    banner.classList.add('show');
+    if(bannerTimeout) clearTimeout(bannerTimeout);
+    bannerTimeout = setTimeout(function(){ banner.classList.remove('show'); }, 6500);
+  }
+
+  /* ================= Actions ================= */
+  function findSensor(id){
+    for(var i=0;i<sensors.length;i++){ if(sensors[i].id === id) return sensors[i]; }
+    return null;
+  }
+
+  function dispatchAction(id){
+    var s = findSensor(id);
+    if(!s || s.actionLabelDone) return;
+    var status = getStatus(s);
+    var action = primaryAction(status);
+    if(!action) return;
+    s.actionLabelDone = action.doneLabel;
+    toast(action.toast + ' ' + s.address + '.');
+    render();
+    if(currentModalId === id) openDetails(id, true);
+  }
+
+  function copyPhone(phone){
+    function done(){ toast('Número copiado: ' + phone); }
+    function fail(){ toast('No se pudo copiar el número.'); }
+    if(navigator.clipboard && navigator.clipboard.writeText){
+      navigator.clipboard.writeText(phone).then(done).catch(fail);
+    } else {
+      try{
+        var ta = document.createElement('textarea');
+        ta.value = phone;
+        ta.style.position = 'fixed';
+        ta.style.opacity = '0';
+        document.body.appendChild(ta);
+        ta.select();
+        document.execCommand('copy');
+        document.body.removeChild(ta);
+        done();
+      }catch(e){ fail(); }
+    }
+  }
+
+  /* ================= Modal ================= */
+  var currentModalId = null;
+
+  function buildSparkline(trend, color){
+    var w = 260, h = 60, pad = 6;
+    var min = Math.min.apply(null, trend);
+    var max = Math.max.apply(null, trend);
+    if(max === min){ max = min + 1; }
+    var step = (w - pad*2) / (trend.length - 1);
+    var pts = trend.map(function(v,i){
+      var x = pad + i*step;
+      var y = h - pad - ((v - min)/(max-min)) * (h - pad*2);
+      return x.toFixed(1) + ',' + y.toFixed(1);
+    }).join(' ');
+    return '<svg viewBox="0 0 '+w+' '+h+'" width="100%" height="'+h+'" preserveAspectRatio="none">'+
+      '<polyline points="'+pts+'" fill="none" stroke="'+color+'" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>'+
+      '</svg>';
+  }
+
+  function openDetails(id, silentRefresh){
+    var s = findSensor(id);
+    if(!s) return;
+    currentModalId = id;
+    var status = getStatus(s);
+    var meta = STATUS_META[status];
+    var action = primaryAction(status);
+
+    var actionHtml = '';
+    if(s.actionLabelDone){
+      actionHtml = '<span class="action-done"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>'+escapeHtml(s.actionLabelDone)+'</span>';
+    } else if(action){
+      actionHtml = '<button class="btn btn-action '+action.cls+'" data-action="dispatch" data-id="'+s.id+'" type="button" style="flex:1">'+action.label+'</button>';
+    }
+
+    var body =
+      '<div class="modal-status-row">'+
+        '<span class="status-pill" style="--status-c:'+meta.color+'"><span class="sw"></span>'+meta.label+'</span>'+
+        '<span class="sensor-id">'+s.id+'</span>'+
+      '</div>'+
+      '<h2 id="modalTitle">'+escapeHtml(s.address)+'</h2>'+
+      '<p class="m-sub">'+escapeHtml(s.zone)+' &middot; Instalado '+s.installed+'</p>'+
+
+      '<div class="m-grid">'+
+        '<div class="m-field"><label>Nivel actual</label><div class="m-ppm-big" style="color:'+meta.color+'">'+(s.offline ? '—' : s.ppm)+' <span style="font-size:0.9rem;color:var(--text-mute)">PPM</span></div></div>'+
+        '<div class="m-field"><label>Última actualización</label><div>'+formatRelative(s.lastUpdate)+'</div></div>'+
+        '<div class="m-field mono"><label>Coordenadas</label><div>'+s.lat.toFixed(4)+', '+s.lng.toFixed(4)+'</div></div>'+
+        '<div class="m-field"><label>Contacto</label><div>'+escapeHtml(s.contactName)+'</div></div>'+
+        '<div class="m-field mono"><label>Teléfono</label><div>'+escapeHtml(s.phone)+'</div></div>'+
+        '<div class="m-field"><label>Estado del sensor</label><div>'+(s.offline ? 'Sin comunicación' : 'En línea')+'</div></div>'+
+      '</div>'+
+
+      (s.trend && s.trend.length > 1 ?
+        '<div class="trend-block">'+
+          '<h3>Tendencia — últimas lecturas</h3>'+
+          '<div class="trend-svg-wrap">'+buildSparkline(s.trend, meta.color)+'</div>'+
+        '</div>' : '')+
+
+      '<div class="modal-actions">'+
+        actionHtml+
+        '<a class="btn btn-ghost" href="tel:'+escapeHtml(s.phone.replace(/\s+/g,''))+'" style="flex:1;justify-content:center;text-decoration:none;">Llamar a '+escapeHtml(s.contactName.split(' ')[0])+'</a>'+
+        '<button class="btn btn-ghost" data-action="copy" data-phone="'+escapeHtml(s.phone)+'" type="button">Copiar número</button>'+
+      '</div>';
+
+    document.getElementById('modalBody').innerHTML = body;
+    if(!silentRefresh){
+      document.getElementById('modalOverlay').classList.remove('hidden');
+    }
+  }
+
+  function closeModal(){
+    currentModalId = null;
+    document.getElementById('modalOverlay').classList.add('hidden');
+  }
+
+  /* ================= Simulate new critical alert ================= */
+  function simulateCriticalAlert(){
+    sensorCounter += 1;
+    var addr = EXTRA_ADDRESS_POOL[Math.floor(Math.random()*EXTRA_ADDRESS_POOL.length)];
+    var contact = EXTRA_CONTACT_POOL[Math.floor(Math.random()*EXTRA_CONTACT_POOL.length)];
+    var ppm = 150 + Math.floor(Math.random()*80);
+    var newSensor = {
+      id:'CO-SENSOR-'+sensorCounter,
+      address:addr.address, zone:addr.zone,
+      lat:-40.15 + (Math.random()*0.03-0.015), lng:-71.35 + (Math.random()*0.03-0.015),
+      installed:'—',
+      contactName:contact.name, phone:contact.phone,
+      ppm:ppm, offline:false, lastUpdate:Date.now(), dispatched:false, actionLabelDone:null,
+      trend:[Math.round(ppm*0.6), Math.round(ppm*0.75), Math.round(ppm*0.85), Math.round(ppm*0.95), ppm]
+    };
+    sensors.unshift(newSensor);
+    justAddedId = newSensor.id;
+    render();
+    showBanner(newSensor);
+    beep();
+  }
+
+  /* ================= Event wiring ================= */
+  document.getElementById('searchInput').addEventListener('input', function(e){
+    state.search = e.target.value;
+    render();
+  });
+  document.getElementById('statusFilter').addEventListener('change', function(e){
+    state.filter = e.target.value;
+    render();
+  });
+  document.getElementById('sortSelect').addEventListener('change', function(e){
+    state.sort = e.target.value;
+    render();
+  });
+  document.getElementById('simulateBtn').addEventListener('click', simulateCriticalAlert);
+
+  document.getElementById('sensorGrid').addEventListener('click', function(e){
+    var dispatchBtn = e.target.closest('[data-action="dispatch"]');
+    if(dispatchBtn){ dispatchAction(dispatchBtn.getAttribute('data-id')); return; }
+    var detailsBtn = e.target.closest('[data-action="details"]');
+    if(detailsBtn){ openDetails(detailsBtn.getAttribute('data-id')); return; }
+    var copyBtn = e.target.closest('[data-action="copy"]');
+    if(copyBtn){ copyPhone(copyBtn.getAttribute('data-phone')); return; }
+  });
+
+  document.getElementById('modalBody').addEventListener('click', function(e){
+    var dispatchBtn = e.target.closest('[data-action="dispatch"]');
+    if(dispatchBtn){ dispatchAction(dispatchBtn.getAttribute('data-id')); return; }
+    var copyBtn = e.target.closest('[data-action="copy"]');
+    if(copyBtn){ copyPhone(copyBtn.getAttribute('data-phone')); return; }
+  });
+
+  document.getElementById('modalClose').addEventListener('click', closeModal);
+  document.getElementById('modalOverlay').addEventListener('click', function(e){
+    if(e.target === document.getElementById('modalOverlay')) closeModal();
+  });
+  document.addEventListener('keydown', function(e){
+    if(e.key === 'Escape') closeModal();
+  });
+
+  /* ================= Init ================= */
+  tickClock();
+  setInterval(tickClock, 1000);
+  render();
+  setInterval(simulateFluctuation, 5000);
+
+})();
+</script>
+</body>
+</html>
